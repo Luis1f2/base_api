@@ -1,8 +1,6 @@
 const express = require("express");
 const cors = require("cors")
-const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
+const bodyParser = require('body-parser');
 const dbConfig = require("./src/config/db.config")
 const rateLimit = require("express-rate-limit");
 const app = express();
@@ -72,28 +70,28 @@ async function initial() {
   
   }
 
-  const upload = multer({ dest: 'uploads/' });
+  const uploadRoutes = require('./src/routers/upload.routes');
 
-// Endpoint para subir archivos mp3
-app.post('/api/V3/upload', upload.single('mp3file'), (req, res) => {
+  // Middleware para parsear el cuerpo de las peticiones JSON
+  app.use(bodyParser.json());
+  app.use(bodyParser.urlencoded({ extended: true }));
+  
+  // Configuración básica de CORS para permitir ciertas cabeceras y métodos
+  app.use((req, res, next) => {
+      res.header("Access-Control-Allow-Origin", "*");
+      res.header("Access-Control-Allow-Headers", "x-access-token, Origin, Content-Type, Accept");
+      res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
+      next();
+  });
+  
+  // Usando las rutas importadas
+  app.use('/api/V3', uploadRoutes);
+  
+  // Middleware de manejo de errores generales
+  app.use((err, req, res, next) => {
+      console.error(err.stack); // Log del error para el servidor
+      res.status(500).send('Something broke!');
+  });
 
-  res.send('Archivo mp3 subido correctamente.');
-});
-
-// Endpoint para descargar archivos mp3
-app.get('/download/:filename', (req, res) => {
-  const filename = req.params.filename;
-  const filePath = path.join(__dirname, 'uploads', filename);
-
-  // Verificar si el archivo existe
-  if (fs.existsSync(filePath)) {
-    // Configurar el encabezado Content-Type para archivos mp3
-    res.setHeader('Content-Type', 'audio/mpeg');
-    // Proporcionar el archivo como una respuesta HTTP
-    fs.createReadStream(filePath).pipe(res);
-  } else {
-    res.status(404).send('Archivo no encontrado.');
-  }
-});
 
 
